@@ -15,6 +15,7 @@ class GameRecord {
     required this.score,
     this.unlimited = false,
     this.daily = false,
+    this.stars = 0,
   });
 
   final DateTime date;
@@ -29,6 +30,9 @@ class GameRecord {
   final bool unlimited;
   final bool daily;
 
+  /// Stars earned (1..3 for a win, 0 otherwise).
+  final int stars;
+
   Map<String, Object> toJson() => {
         'date': date.toIso8601String(),
         'level': level.id,
@@ -39,6 +43,7 @@ class GameRecord {
         'score': score,
         'unlimited': unlimited,
         'daily': daily,
+        'stars': stars,
       };
 
   factory GameRecord.fromJson(Map<String, Object?> j) => GameRecord(
@@ -51,5 +56,6 @@ class GameRecord {
         score: j['score']! as int,
         unlimited: (j['unlimited'] as bool?) ?? false,
         daily: (j['daily'] as bool?) ?? false,
+        stars: (j['stars'] as int?) ?? 0,
       );
 }

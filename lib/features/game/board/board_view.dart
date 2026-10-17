@@ -16,6 +16,9 @@ class BoardView extends StatefulWidget {
     required this.showErrors,
     this.hidden = false,
     this.flash,
+    this.hintCells = const {},
+    this.hintTarget,
+    this.noteFocus = 0,
   });
 
   final GameState game;
@@ -24,6 +27,9 @@ class BoardView extends StatefulWidget {
   final bool showErrors;
   final bool hidden;
   final Flash? flash;
+  final Set<int> hintCells;
+  final int? hintTarget;
+  final int noteFocus;
 
   @override
   State<BoardView> createState() => _BoardViewState();
@@ -92,6 +98,9 @@ class _BoardViewState extends State<BoardView>
                   showErrors: widget.showErrors,
                   hidden: widget.hidden,
                   flashCells: widget.flash?.cells ?? const {},
+                  hintCells: widget.hintCells,
+                  hintTarget: widget.hintTarget,
+                  noteFocus: widget.noteFocus,
                   // Fades in then out over the animation.
                   flash: _flash.isAnimating
                       ? 1 - (2 * _flash.value - 1).abs()

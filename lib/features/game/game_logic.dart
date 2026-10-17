@@ -4,6 +4,7 @@ import '../../data/settings.dart';
 import '../../engine/common/bitmask.dart';
 import '../../engine/common/board.dart';
 import '../../engine/killer/candidates.dart';
+import '../../engine/killer/hints.dart';
 import '../../engine/killer/level.dart';
 import 'game_state.dart';
 
@@ -152,6 +153,58 @@ abstract final class GameLogic {
       ),
       mistake: mistake,
       completed: completed,
+    );
+  }
+
+  /// "Qo'llash" in the hint panel (TZ §5.3): removes wrong digits, places
+  /// the hinted digit (no points, TZ §5.4) or narrows pencil marks.
+  static GameState applyHint(GameState s, Hint h, AppSettings rules) {
+    if (!_canPlay(s)) return s;
+    final values = [...s.values];
+    final notes = [...s.notes];
+    var scoredCells = s.scoredCells;
+    var scoredUnits = s.scoredUnits;
+    var status = s.status;
+    var selected = s.selected;
+    switch (h.kind) {
+      case HintKind.wrongDigits:
+        for (final i in h.focus) {
+          values[i] = 0;
+        }
+      case HintKind.pairSum:
+        for (final e in h.allowed.entries) {
+          notes[e.key] = e.value;
+        }
+      default:
+        final i = h.target!, d = h.digit!;
+        values[i] = d;
+        notes[i] = 0;
+        selected = i;
+        if (rules.autoRemoveNotes) {
+          for (final p in peers[i]) {
+            notes[p] &= ~bit(d);
+          }
+          for (final c in s.puzzle.cages[s.puzzle.cageOf[i]].cells) {
+            notes[c] &= ~bit(d);
+          }
+        }
+        // Counted as solved so it can never earn points later.
+        scoredCells = {...scoredCells, i};
+        scoredUnits = {
+          ...scoredUnits,
+          for (final u in _completedUnits(s, values, i))
+            u.kind.index * 100 + u.index,
+        };
+        if (_solved(s, values)) status = GameStatus.won;
+    }
+    return s.copyWith(
+      values: List.unmodifiable(values),
+      notes: List.unmodifiable(notes),
+      history: _pushed(s),
+      scoredCells: scoredCells,
+      scoredUnits: scoredUnits,
+      status: status,
+      selected: selected,
     );
   }
 

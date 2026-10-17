@@ -19,6 +19,17 @@ abstract class GameRepository {
 
   bool isSaved(KillerPuzzle p);
   Future<void> setSaved(KillerPuzzle p, {required bool saved});
+  List<KillerPuzzle> savedPuzzles();
+
+  /// "Statistikani nolga tushirish" (TZ §3.5).
+  Future<void> clearHistory();
+
+  /// Replaces everything (import, TZ §3.5).
+  Future<void> replaceAll({
+    required GameState? current,
+    required List<GameRecord> history,
+    required List<KillerPuzzle> saved,
+  });
 }
 
 /// Overridden in `main()` (Hive) and in tests ([MemoryGameRepository]).
@@ -86,6 +97,30 @@ class HiveGameRepository implements GameRepository {
   Future<void> setSaved(KillerPuzzle p, {required bool saved}) => saved
       ? _saved.put(_savedKey(p), jsonEncode(p.toJson()))
       : _saved.delete(_savedKey(p));
+
+  @override
+  List<KillerPuzzle> savedPuzzles() => [
+        for (final raw in _saved.values) KillerPuzzle.fromJson(_decode(raw)),
+      ];
+
+  @override
+  Future<void> clearHistory() async {
+    await _history.clear();
+  }
+
+  @override
+  Future<void> replaceAll({
+    required GameState? current,
+    required List<GameRecord> history,
+    required List<KillerPuzzle> saved,
+  }) async {
+    await Future.wait([_current.clear(), _history.clear(), _saved.clear()]);
+    if (current != null) await saveCurrent(current);
+    await _history.addAll([for (final r in history) jsonEncode(r.toJson())]);
+    await _saved.putAll({
+      for (final p in saved) _savedKey(p): jsonEncode(p.toJson()),
+    });
+  }
 }
 
 /// In-memory repository for tests.
@@ -124,5 +159,26 @@ class MemoryGameRepository implements GameRepository {
     } else {
       this.saved.remove(_savedKey(p));
     }
+  }
+
+  @override
+  List<KillerPuzzle> savedPuzzles() => saved.values.toList();
+
+  @override
+  Future<void> clearHistory() async => records.clear();
+
+  @override
+  Future<void> replaceAll({
+    required GameState? current,
+    required List<GameRecord> history,
+    required List<KillerPuzzle> saved,
+  }) async {
+    this.current = current == null ? null : jsonEncode(current.toJson());
+    records
+      ..clear()
+      ..addAll(history);
+    this.saved
+      ..clear()
+      ..addAll({for (final p in saved) _savedKey(p): p});
   }
 }

@@ -12,6 +12,7 @@ import 'board/board_view.dart';
 import 'cage_panel.dart';
 import 'game_controller.dart';
 import 'game_state.dart';
+import 'hint_panel.dart';
 import 'number_pad.dart';
 import 'status_bar.dart';
 import 'toolbar.dart';
@@ -60,7 +61,7 @@ class _GameScreenState extends ConsumerState<GameScreen> {
       final choice = await showWinDialog(
         context,
         game,
-        newRecord: ref.read(gameProvider).newRecord,
+        ref.read(gameProvider).win,
       );
       _dialogOpen = false;
       if (!mounted) return;
@@ -80,12 +81,6 @@ class _GameScreenState extends ConsumerState<GameScreen> {
         unawaited(_ctrl.newGame(game.puzzle.level));
       }
     }
-  }
-
-  void _onHint() {
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(const SnackBar(content: Text(S.hintComingSoon)));
   }
 
   @override
@@ -144,9 +139,8 @@ class _GameScreenState extends ConsumerState<GameScreen> {
                 : _GameBody(
                     game: game,
                     settings: settings,
-                    flash: session.flash,
+                    session: session,
                     controller: _ctrl,
-                    onHint: _onHint,
                   ),
       ),
     );
@@ -157,20 +151,19 @@ class _GameBody extends StatelessWidget {
   const _GameBody({
     required this.game,
     required this.settings,
-    required this.flash,
+    required this.session,
     required this.controller,
-    required this.onHint,
   });
 
   final GameState game;
   final AppSettings settings;
-  final Flash? flash;
+  final GameSession session;
   final GameController controller;
-  final VoidCallback onHint;
 
   @override
   Widget build(BuildContext context) {
     final paused = game.status == GameStatus.paused;
+    final hint = session.hint;
     return LayoutBuilder(
       builder: (context, box) {
         const pad = AppDims.screenPadding;
@@ -201,7 +194,14 @@ class _GameBody extends StatelessWidget {
                       highlightSame: settings.highlightSame,
                       showErrors: settings.showErrors,
                       hidden: paused,
-                      flash: flash,
+                      flash: session.flash,
+                      hintCells: hint == null
+                          ? const {}
+                          : hint.hint.cellsForStep(hint.step).toSet(),
+                      hintTarget: hint != null && hint.step == 2
+                          ? hint.hint.target
+                          : null,
+                      noteFocus: session.noteFocus,
                     ),
                     if (paused)
                       Positioned.fill(
@@ -214,23 +214,40 @@ class _GameBody extends StatelessWidget {
                 ),
               ),
               _NumberFirstSwitch(settings: settings),
-              CagePanel(game: game, onToggle: controller.toggleCombo),
+              // The hint panel needs the room while it is open.
+              if (hint == null)
+                CagePanel(game: game, onToggle: controller.toggleCombo),
               // Spare height goes here, keeping the controls near the thumb.
-              const Spacer(),
+              if (hint == null) const Spacer(),
               GameToolbar(
                 game: game,
                 onUndo: controller.undo,
                 onErase: controller.erase,
                 onFastPencil: controller.fastPencil,
                 onPencil: controller.toggleNotesMode,
-                onHint: onHint,
+                onHint: controller.hint,
               ),
               const SizedBox(height: 8),
-              NumberPad(
-                game: game,
-                hideUsed: settings.hideUsedNumbers,
-                onDigit: controller.tapDigit,
-              ),
+              if (hint == null)
+                NumberPad(
+                  game: game,
+                  hideUsed: settings.hideUsedNumbers,
+                  onDigit: controller.tapDigit,
+                  onLongPress: controller.focusNotes,
+                  noteFocus: session.noteFocus,
+                )
+              else
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: HintPanel(
+                      session: hint,
+                      onNext: controller.hint,
+                      onApply: controller.applyHint,
+                      onClose: controller.closeHint,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 24),
             ],
           ),

@@ -35,8 +35,8 @@ node -e "const E=require('./reference/killer_engine.js')(); console.log(E.genera
 - [x] 1. Asos
 - [x] 2. Killer dvigateli
 - [x] 3. O'yin ekrani
-- [ ] 4. Bosh sahifa va Yangi o'yin oynasi
-- [ ] 5. Aqlli maslahat va Tez qoralama
-- [ ] 6. Progress
-- [ ] 7. Men ekrani
+- [x] 4. Bosh sahifa va Yangi o'yin oynasi
+- [x] 5. Aqlli maslahat va Tez qoralama
+- [x] 6. Progress
+- [x] 7. Men ekrani
 - [ ] 8. Sayqal

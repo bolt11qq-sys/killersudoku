@@ -44,17 +44,17 @@ class GameState {
     this.fastPencilUsed = 0,
     this.status = GameStatus.playing,
     this.saved = false,
-    this.daily = false,
+    this.dailyKey,
   });
 
   /// A fresh game: givens pre-filled, centre cell selected.
-  factory GameState.start(KillerPuzzle puzzle, {bool daily = false}) =>
+  factory GameState.start(KillerPuzzle puzzle, {String? dailyKey}) =>
       GameState(
         puzzle: puzzle,
         values: List<int>.unmodifiable(puzzle.givens),
         notes: List<int>.unmodifiable(List<int>.filled(81, 0)),
         selected: 40,
-        daily: daily,
+        dailyKey: dailyKey,
       );
 
   final KillerPuzzle puzzle;
@@ -95,7 +95,10 @@ class GameState {
 
   /// Starred by the player (TZ §3.3).
   final bool saved;
-  final bool daily;
+  /// Date key (`YYYY-MM-DD`) when this is a daily challenge.
+  final String? dailyKey;
+
+  bool get daily => dailyKey != null;
 
   bool get isOver => status == GameStatus.won || status == GameStatus.lost;
 
@@ -166,7 +169,7 @@ class GameState {
       fastPencilUsed: fastPencilUsed ?? this.fastPencilUsed,
       status: status ?? this.status,
       saved: saved ?? this.saved,
-      daily: daily,
+      dailyKey: dailyKey,
     );
   }
 
@@ -195,7 +198,7 @@ class GameState {
         'status': (status == GameStatus.playing ? GameStatus.paused : status)
             .name,
         'saved': saved,
-        'daily': daily,
+        'dailyKey': ?dailyKey,
       };
 
   factory GameState.fromJson(Map<String, Object?> j) {
@@ -228,7 +231,7 @@ class GameState {
       fastPencilUsed: j['fastPencilUsed']! as int,
       status: GameStatus.values.byName(j['status']! as String),
       saved: (j['saved'] as bool?) ?? false,
-      daily: (j['daily'] as bool?) ?? false,
+      dailyKey: j['dailyKey'] as String?,
     );
   }
 }

@@ -1,4 +1,5 @@
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 
 import '../../../app/theme.dart';
@@ -63,7 +64,17 @@ class BoardPainter extends CustomPainter {
     required this.hidden,
     required this.flashCells,
     required this.flash,
+    this.hintCells = const {},
+    this.hintTarget,
+    this.noteFocus = 0,
   });
+
+  /// Cells of the open hint step, and the cell the hint fills.
+  final Set<int> hintCells;
+  final int? hintTarget;
+
+  /// Pencil-mark digit to highlight across the board (long press).
+  final int noteFocus;
 
   final GameState game;
   final CageOutline outline;
@@ -81,6 +92,7 @@ class BoardPainter extends CustomPainter {
 
   /// Digit whose cells and notes are highlighted.
   int get _focusDigit {
+    if (noteFocus != 0) return noteFocus;
     if (game.pickedDigit != 0) return game.pickedDigit;
     final s = game.selected;
     return s >= 0 ? game.values[s] : 0;
@@ -96,15 +108,33 @@ class BoardPainter extends CustomPainter {
     if (hidden) return;
     _paintCages(canvas, cell);
     _paintText(canvas, cell);
+    final t = hintTarget;
+    if (t != null) {
+      canvas.drawRect(
+        Rect.fromLTWH(colOf[t] * cell, rowOf[t] * cell, cell, cell)
+            .deflate(1.5),
+        Paint()
+          ..color = c.primary
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3,
+      );
+    }
   }
 
   /// Highlight colour of a cell, or null for the plain surface.
-  /// Priority: selected > same digit > selected cage > row/column/block.
+  /// Priority: hint > selected > same digit (or pencil mark when a note
+  /// digit is focused) > selected cage > row/column/block.
   Color? _bgFor(int i, int focus) {
     final c = colors;
     final sel = game.selected;
+    if (hintCells.contains(i)) return c.hintFill;
     if (i == sel) return c.selected;
     if (focus != 0 && game.values[i] == focus) return c.sameNumber;
+    if (noteFocus != 0 &&
+        game.values[i] == 0 &&
+        game.notes[i] & (1 << (noteFocus - 1)) != 0) {
+      return c.sameNumber;
+    }
     if (sel < 0) return null;
     if (game.puzzle.cageOf[i] == game.puzzle.cageOf[sel]) return c.cageFill;
     if (rowOf[i] == rowOf[sel] ||
@@ -275,5 +305,8 @@ class BoardPainter extends CustomPainter {
       old.hidden != hidden ||
       old.flash != flash ||
       old.highlightSame != highlightSame ||
-      old.showErrors != showErrors;
+      old.showErrors != showErrors ||
+      old.noteFocus != noteFocus ||
+      old.hintTarget != hintTarget ||
+      !setEquals(old.hintCells, hintCells);
 }

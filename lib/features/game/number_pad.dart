@@ -11,11 +11,17 @@ class NumberPad extends StatelessWidget {
     required this.game,
     required this.hideUsed,
     required this.onDigit,
+    this.onLongPress,
+    this.noteFocus = 0,
   });
 
   final GameState game;
   final bool hideUsed;
   final ValueChanged<int> onDigit;
+
+  /// Long press: highlight this pencil-mark digit on the board.
+  final ValueChanged<int>? onLongPress;
+  final int noteFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -33,8 +39,9 @@ class NumberPad extends StatelessWidget {
                 left: 9 - game.placedCorrect(d),
                 hideUsed: hideUsed,
                 notesMode: game.notesMode,
-                picked: game.pickedDigit == d,
+                picked: game.pickedDigit == d || noteFocus == d,
                 onTap: () => onDigit(d),
+                onLongPress: onLongPress == null ? null : () => onLongPress!(d),
               ),
             ],
           ],
@@ -53,6 +60,7 @@ class _DigitButton extends StatelessWidget {
     required this.notesMode,
     required this.picked,
     required this.onTap,
+    this.onLongPress,
   });
 
   final int digit;
@@ -62,6 +70,7 @@ class _DigitButton extends StatelessWidget {
   final bool notesMode;
   final bool picked;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -84,6 +93,7 @@ class _DigitButton extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(AppDims.numberButtonRadius),
             onTap: done ? null : onTap,
+            onLongPress: onLongPress,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [

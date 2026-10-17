@@ -22,6 +22,8 @@ class AppColors extends ThemeExtension<AppColors> {
     required this.streak,
     required this.cage,
     required this.cageFill,
+    required this.hintFill,
+    required this.gold,
     required this.ratingChip,
     required this.shadow,
   });
@@ -42,6 +44,12 @@ class AppColors extends ThemeExtension<AppColors> {
   final Color streak;
   final Color cage;
   final Color cageFill;
+
+  /// Cells explained by an open smart hint.
+  final Color hintFill;
+
+  /// Trophies and earned stars.
+  final Color gold;
 
   /// Light-blue background of the brain-rating chip on the home screen.
   final Color ratingChip;
@@ -67,6 +75,8 @@ class AppColors extends ThemeExtension<AppColors> {
     streak: Color(0xFFF05A3C),
     cage: Color(0xFF4A5568),
     cageFill: Color(0xFFEAF0FB),
+    hintFill: Color(0xFFFBE3A6),
+    gold: Color(0xFFF2B33D),
     ratingChip: Color(0xFFDCE5F6),
     shadow: Color(0x0F1C2230),
   );
@@ -88,6 +98,8 @@ class AppColors extends ThemeExtension<AppColors> {
     streak: Color(0xFFFF7A5C),
     cage: Color(0xFFA0AEC0),
     cageFill: Color(0xFF1F2838),
+    hintFill: Color(0xFF4D3D14),
+    gold: Color(0xFFF5C04F),
     ratingChip: Color(0xFF22304A),
     shadow: Color(0x33000000),
   );
@@ -110,6 +122,8 @@ class AppColors extends ThemeExtension<AppColors> {
     Color? streak,
     Color? cage,
     Color? cageFill,
+    Color? hintFill,
+    Color? gold,
     Color? ratingChip,
     Color? shadow,
   }) {
@@ -130,6 +144,8 @@ class AppColors extends ThemeExtension<AppColors> {
       streak: streak ?? this.streak,
       cage: cage ?? this.cage,
       cageFill: cageFill ?? this.cageFill,
+      hintFill: hintFill ?? this.hintFill,
+      gold: gold ?? this.gold,
       ratingChip: ratingChip ?? this.ratingChip,
       shadow: shadow ?? this.shadow,
     );
@@ -156,6 +172,8 @@ class AppColors extends ThemeExtension<AppColors> {
       streak: l(streak, other.streak),
       cage: l(cage, other.cage),
       cageFill: l(cageFill, other.cageFill),
+      hintFill: l(hintFill, other.hintFill),
+      gold: l(gold, other.gold),
       ratingChip: l(ratingChip, other.ratingChip),
       shadow: l(shadow, other.shadow),
     );

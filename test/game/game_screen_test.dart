@@ -14,10 +14,16 @@ import '../helpers.dart';
 int sol(int i) => testPuzzle.solution[i];
 int wrong(int i) => sol(i) % 9 + 1;
 
+/// A text inside the open bottom sheet (home also shows level names).
+Finder inSheet(String text) => find.descendant(
+      of: find.byType(BottomSheet),
+      matching: find.text(text),
+    );
+
 Future<void> startNewGame(WidgetTester tester) async {
   await tester.tap(find.text(S.newGame));
   await settle(tester);
-  await tester.tap(find.text(S.level(KillerLevel.medium)));
+  await tester.tap(inSheet(S.level(KillerLevel.medium)));
   await settle(tester);
 }
 
@@ -60,9 +66,9 @@ void main() {
     await tester.tap(find.text(S.newGame));
     await settle(tester);
     for (final l in KillerLevel.values) {
-      expect(find.text(S.level(l)), findsOneWidget);
+      expect(inSheet(S.level(l)), findsOneWidget);
     }
-    await tester.tap(find.text(S.level(KillerLevel.medium)));
+    await tester.tap(inSheet(S.level(KillerLevel.medium)));
     await settle(tester);
 
     expect(find.byType(BoardView), findsOneWidget);
@@ -182,7 +188,7 @@ void main() {
     final repo = await pumpApp(tester, repo: repoWithAlmostSolved([0, 1]));
     await tester.tap(find.text(S.newGame));
     await settle(tester);
-    await tester.tap(find.text(S.level(KillerLevel.medium)));
+    await tester.tap(inSheet(S.level(KillerLevel.medium)));
     await settle(tester);
     expect(repo.records.single.result, GameResult.abandoned);
   });
