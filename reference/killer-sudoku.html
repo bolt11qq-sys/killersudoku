@@ -1,0 +1,1238 @@
+<title>Killer Sudoku</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: drafting-table — board as the sheet on the left, a narrow instrument rail on the right; stacks on phones */
+:root {
+  --bg: #e9edf2;
+  --paper: #fbfcfd;
+  --ink: #18202c;
+  --muted: #5b6779;
+  --grid: #c3cbd7;
+  --cage: #3c4a60;
+  --accent: #2b48d4;
+  --accent-soft: rgba(43, 72, 212, .13);
+  --accent-faint: rgba(43, 72, 212, .055);
+  --cage-soft: rgba(43, 72, 212, .085);
+  --same: rgba(43, 72, 212, .2);
+  --hint: rgba(214, 150, 20, .26);
+  --hint-ink: #8a5a00;
+  --err: #c43a2c;
+  --err-soft: rgba(196, 58, 44, .14);
+  --ok: #1f7a4d;
+  --line: #d3d9e2;
+  --raise: #ffffff;
+  --shadow: 0 1px 0 rgba(24, 32, 44, .05), 0 8px 24px -14px rgba(24, 32, 44, .28);
+  --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f131a; --paper: #161b24; --ink: #e3e8f0; --muted: #8e9ab0; --grid: #2e3747; --cage: #93a3bd;
+    --accent: #8ea4ff; --accent-soft: rgba(142, 164, 255, .2); --accent-faint: rgba(142, 164, 255, .07);
+    --cage-soft: rgba(142, 164, 255, .1); --same: rgba(142, 164, 255, .28); --hint: rgba(240, 180, 60, .25); --hint-ink: #f0c060;
+    --err: #ff7b6b; --err-soft: rgba(255, 123, 107, .16); --ok: #5fd39a; --line: #273041; --raise: #1c2230;
+    --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 10px 28px -14px rgba(0, 0, 0, .7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f131a; --paper: #161b24; --ink: #e3e8f0; --muted: #8e9ab0; --grid: #2e3747; --cage: #93a3bd;
+  --accent: #8ea4ff; --accent-soft: rgba(142, 164, 255, .2); --accent-faint: rgba(142, 164, 255, .07);
+  --cage-soft: rgba(142, 164, 255, .1); --same: rgba(142, 164, 255, .28); --hint: rgba(240, 180, 60, .25); --hint-ink: #f0c060;
+  --err: #ff7b6b; --err-soft: rgba(255, 123, 107, .16); --ok: #5fd39a; --line: #273041; --raise: #1c2230;
+  --shadow: 0 1px 0 rgba(0, 0, 0, .3), 0 10px 28px -14px rgba(0, 0, 0, .7);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.5; -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; }
+button:focus-visible, .cell:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.app { max-width: 1060px; margin: 0 auto; padding-block: 22px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px 24px; margin-bottom: 18px; }
+.brand h1 { font-family: var(--f-display); font-weight: 800; font-size: clamp(28px, 5vw, 40px); line-height: 1; letter-spacing: -.02em; margin: 0; text-wrap: balance; }
+.brand h1 span { color: var(--accent); }
+.brand p { margin: 6px 0 0; color: var(--muted); font-size: 13.5px; }
+.levels { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.lv { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 7px 14px; cursor: pointer; font-weight: 500; font-size: 14px; display: inline-flex; gap: 7px; align-items: center; }
+.lv .pips { display: inline-flex; gap: 2px; }
+.lv .pips i { width: 5px; height: 12px; border-radius: 2px; background: var(--grid); display: block; }
+.lv .pips i.on { background: var(--accent); }
+.lv[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--ink); }
+.btn-new { border: 0; background: var(--ink); color: var(--paper); border-radius: 999px; padding: 8px 16px; font-weight: 600; cursor: pointer; font-size: 14px; }
+.btn-new:hover { filter: brightness(1.12); }
+
+/* main grid */
+.main { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 880px) { .main { grid-template-columns: minmax(0, 1fr); } .play { max-width: 560px; margin: 0 auto; width: 100%; } }
+.play { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+.status { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13.5px; color: var(--muted); }
+.status .lvname { font-weight: 600; color: var(--ink); }
+.timer { display: inline-flex; align-items: center; gap: 8px; }
+.timer b { font-family: var(--f-mono); font-weight: 600; color: var(--ink); font-size: 15px; font-variant-numeric: tabular-nums; }
+.icon-btn { border: 1px solid var(--line); background: var(--paper); border-radius: 8px; width: 32px; height: 32px; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.icon-btn svg { width: 14px; height: 14px; fill: currentColor; }
+
+/* board */
+.board-wrap { position: relative; width: 100%; aspect-ratio: 1; max-width: 100%; }
+.board { position: absolute; inset: 0; display: grid; grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(9, 1fr); background: var(--paper); border-radius: 6px; box-shadow: var(--shadow); container-type: inline-size; user-select: none; -webkit-user-select: none; touch-action: manipulation; overflow: hidden; }
+.cell { position: relative; cursor: pointer; outline: none; }
+.cell.peer { background: var(--accent-faint); }
+.cell.incage { background: var(--cage-soft); }
+.cell.samev { background: var(--same); }
+.cell.sel { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.cell.hint { background: var(--hint); }
+.cell.wrong { background: var(--err-soft); }
+.cell .sum { position: absolute; left: 13%; top: 10.5%; font-family: var(--f-mono); font-weight: 600; font-size: max(9px, 2.3cqi); line-height: 1; color: var(--cage); letter-spacing: -.02em; z-index: 3; }
+.cell .val { position: absolute; inset: 0; display: grid; place-items: center; padding-top: 6%; font-family: var(--f-display); font-weight: 700; font-size: 6cqi; color: var(--accent); z-index: 2; }
+.cell .val.conf { color: var(--err); }
+.cell.wrong .val { color: var(--err); }
+.cell .notes { position: absolute; inset: 27% 9% 6% 9%; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); font-family: var(--f-mono); font-size: max(8px, 2.25cqi); color: var(--muted); line-height: 1; z-index: 2; }
+.cell .notes span { display: grid; place-items: center; }
+.cell .notes span.hl { color: var(--accent); font-weight: 600; }
+svg.over { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
+svg.over .thin { stroke: var(--grid); stroke-width: 2; }
+svg.over .thick { stroke: var(--ink); stroke-width: 5; }
+svg.over .cagep { stroke: var(--cage); stroke-width: 2.4; fill: none; stroke-dasharray: 7 5; stroke-linecap: butt; }
+.veil { position: absolute; inset: 0; z-index: 6; display: grid; place-items: center; background: color-mix(in srgb, var(--paper) 86%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border-radius: 6px; text-align: center; padding: 24px; }
+.veil h2 { font-family: var(--f-display); font-weight: 800; font-size: 28px; margin: 0 0 6px; letter-spacing: -.01em; }
+.veil p { margin: 0 0 16px; color: var(--muted); max-width: 34ch; }
+.veil .stats-row { display: flex; gap: 22px; justify-content: center; margin: 4px 0 18px; flex-wrap: wrap; }
+.veil .stats-row div { display: flex; flex-direction: column; }
+.veil .stats-row small { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.veil .stats-row b { font-family: var(--f-mono); font-size: 20px; font-variant-numeric: tabular-nums; }
+.badge { display: inline-block; background: var(--accent); color: var(--paper); font-size: 12px; font-weight: 600; letter-spacing: .04em; padding: 3px 10px; border-radius: 999px; margin-bottom: 10px; }
+.spinner { width: 34px; height: 34px; border-radius: 50%; border: 3px solid var(--grid); border-top-color: var(--accent); animation: spin .8s linear infinite; margin: 0 auto 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.primary { border: 0; background: var(--accent); color: #fff; border-radius: 10px; padding: 10px 18px; font-weight: 600; cursor: pointer; }
+:root[data-theme="dark"] .primary { color: #0f131a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .primary { color: #0f131a; } }
+
+/* tools & pad */
+.tools { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.tool { border: 1px solid var(--line); background: var(--paper); border-radius: 10px; padding: 8px 4px 7px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 12px; color: var(--muted); font-weight: 500; }
+.tool svg { width: 18px; height: 18px; fill: none; stroke: var(--ink); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.tool:hover { border-color: var(--grid); }
+.tool[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--ink); }
+.tool[aria-pressed="true"] svg { stroke: var(--accent); }
+.tool .tag { font-family: var(--f-mono); font-size: 10.5px; }
+.pad { display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; }
+.num { border: 1px solid var(--line); background: var(--paper); border-radius: 10px; aspect-ratio: 1 / 1.18; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 0; min-width: 0; }
+.num b { font-family: var(--f-display); font-weight: 700; font-size: clamp(20px, 5.4vw, 28px); line-height: 1; color: var(--accent); }
+.num small { font-family: var(--f-mono); font-size: 10.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.num.done { opacity: .35; }
+.num:hover { border-color: var(--accent); }
+.notesmode .num b { font-size: clamp(14px, 3.6vw, 18px); color: var(--muted); }
+
+/* rail */
+.rail { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.card { background: var(--paper); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.card h3 { font-family: var(--f-display); font-weight: 700; font-size: 16px; margin: 0 0 8px; letter-spacing: -.005em; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.card h3 small { font-family: var(--f-mono); font-weight: 500; font-size: 12px; color: var(--muted); }
+.eyebrow { font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
+.hintcard { border-color: color-mix(in srgb, var(--hint-ink) 35%, var(--line)); }
+.hintcard .msg { margin: 0; font-size: 14.5px; }
+.hintcard .msg b { font-family: var(--f-mono); font-weight: 600; }
+.hintcard .msg.idle { color: var(--muted); }
+.hintcard .steps { display: flex; gap: 4px; margin-top: 10px; }
+.hintcard .steps i { height: 4px; flex: 1; border-radius: 2px; background: var(--line); display: block; }
+.hintcard .steps i.on { background: var(--hint-ink); }
+.combos { display: flex; flex-wrap: wrap; gap: 6px; }
+.combo { font-family: var(--f-mono); font-size: 13.5px; font-weight: 500; border: 1px solid var(--line); background: var(--raise); border-radius: 8px; padding: 4px 9px; cursor: pointer; letter-spacing: .06em; font-variant-numeric: tabular-nums; }
+.combo.x { text-decoration: line-through; color: var(--muted); opacity: .55; }
+.combo.dead { text-decoration: line-through; color: var(--muted); opacity: .35; cursor: default; }
+.combo.only { border-color: var(--accent); color: var(--accent); }
+.muted { color: var(--muted); font-size: 13.5px; margin: 0; }
+.cagehint { margin: 10px 0 0; font-size: 12.5px; color: var(--muted); }
+.rule { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 13.5px; margin: 0; }
+.rule dt { font-family: var(--f-mono); font-weight: 600; color: var(--accent); }
+.rule dd { margin: 0; color: var(--ink); }
+.statgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.statgrid div { border-radius: 8px; background: var(--bg); padding: 8px 10px; min-width: 0; }
+.statgrid small { display: block; font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+.statgrid b { display: block; font-family: var(--f-mono); font-size: 16px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.statgrid span { display: block; font-size: 12px; color: var(--muted); }
+.toggles { display: flex; flex-direction: column; gap: 8px; }
+.toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; cursor: pointer; }
+.toggle input { appearance: none; -webkit-appearance: none; width: 36px; height: 20px; border-radius: 999px; background: var(--grid); position: relative; cursor: pointer; flex: none; transition: background .15s; margin: 0; }
+.toggle input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--paper); transition: transform .15s; }
+.toggle input:checked { background: var(--accent); }
+.toggle input:checked::after { transform: translateX(16px); }
+.toggle input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.confirm { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--paper); border: 1px solid var(--err); border-radius: 10px; padding: 8px 12px; font-size: 14px; }
+.confirm button { border: 1px solid var(--line); background: var(--raise); border-radius: 8px; padding: 5px 12px; cursor: pointer; font-weight: 500; }
+.confirm .yes { background: var(--err); color: #fff; border-color: var(--err); }
+.toast { min-height: 20px; font-size: 13.5px; color: var(--muted); text-align: center; }
+.toast.good { color: var(--ok); }
+.toast.bad { color: var(--err); }
+.keys { font-size: 12px; color: var(--muted); margin: 0; }
+.keys kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--raise); }
+@media (max-width: 880px) { .keys { display: none; } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } .toggle input, .toggle input::after { transition: none; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Killer <span>Sudoku</span></h1>
+      <p>Hech qanday raqam berilmagan. Faqat kafeslar va ularning yig'indisi.</p>
+    </div>
+    <div class="levels" id="levels" role="group" aria-label="Qiyinlik darajasi"></div>
+  </header>
+
+  <div class="main">
+    <section class="play" aria-label="O'yin maydoni">
+      <div id="confirmBar" class="confirm" hidden>
+        <span>Joriy o'yin yo'qoladi. Yangi jumboq boshlaysizmi?</span>
+        <button class="yes" id="confirmYes" type="button">Ha, yangisi</button>
+        <button id="confirmNo" type="button">Yo'q</button>
+      </div>
+      <div class="status">
+        <span><span class="lvname" id="lvName">—</span> · <span id="cageCount">—</span></span>
+        <span class="timer">
+          <b id="timer">00:00</b>
+          <button class="icon-btn" id="pauseBtn" type="button" aria-label="Pauza">
+            <svg viewBox="0 0 14 14"><rect x="2.5" y="2" width="3" height="10" rx="1"/><rect x="8.5" y="2" width="3" height="10" rx="1"/></svg>
+          </button>
+        </span>
+      </div>
+
+      <div class="board-wrap">
+        <div class="board" id="board" role="grid" aria-label="Sudoku taxtasi"></div>
+        <svg class="over" id="over" viewBox="0 0 900 900" preserveAspectRatio="none" aria-hidden="true"></svg>
+        <div class="veil" id="veil" hidden></div>
+      </div>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+      <div class="tools">
+        <button class="tool" id="tUndo" type="button"><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Orqaga</button>
+        <button class="tool" id="tErase" type="button"><svg viewBox="0 0 24 24"><path d="M20 20H9L3.5 14.5a2 2 0 0 1 0-2.8l8-8a2 2 0 0 1 2.8 0l5.2 5.2a2 2 0 0 1 0 2.8L12 19.2"/><path d="m8 9 7 7"/></svg>O'chirish</button>
+        <button class="tool" id="tNotes" type="button" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg><span>Qoralama <span class="tag" id="notesTag">O'CH</span></span></button>
+        <button class="tool" id="tHint" type="button"><svg viewBox="0 0 24 24"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.2 1 2V17h6v-.3c0-.8.4-1.5 1-2A7 7 0 0 0 12 2Z"/></svg>Maslahat</button>
+        <button class="tool" id="tCheck" type="button"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg>Tekshirish</button>
+      </div>
+      <div class="pad" id="pad" aria-label="Raqamlar"></div>
+      <p class="keys"><kbd>1</kbd>–<kbd>9</kbd> raqam · <kbd>N</kbd> qoralama · <kbd>⌫</kbd> o'chirish · <kbd>Ctrl</kbd>+<kbd>Z</kbd> orqaga · <kbd>H</kbd> maslahat · strelkalar bilan yurish</p>
+    </section>
+
+    <aside class="rail">
+      <div class="card hintcard">
+        <h3>Maslahat <small id="hintCount">0 ta ishlatildi</small></h3>
+        <p class="msg idle" id="hintMsg">Javobni ochib bermayman. Qayerga qarash va qaysi usulni qo'llashni ko'rsataman. Yana bossangiz, keyingi qadamni ochaman.</p>
+        <div class="steps" id="hintSteps" hidden></div>
+      </div>
+
+      <div class="card">
+        <h3>Kafes <small id="cageInfo">katak tanlang</small></h3>
+        <div class="combos" id="combos"><p class="muted">Katakni bosing: shu kafesga mos keladigan barcha raqam to'plamlari shu yerda chiqadi.</p></div>
+        <p class="cagehint" id="cageHint" hidden>To'plamni bossangiz, uni o'zingiz uchun chizib qo'yasiz. Kiritilgan raqamlarga zid to'plamlar o'zi o'chadi.</p>
+      </div>
+
+      <div class="card">
+        <h3>Asosiy qoidalar</h3>
+        <dl class="rule">
+          <dt>1–9</dt><dd>Har qator, ustun va 3×3 blokda har raqam bir marta.</dd>
+          <dt>Σ</dt><dd>Kafes ichidagi raqamlar yig'indisi burchakdagi songa teng, raqamlar takrorlanmaydi.</dd>
+          <dt>45</dt><dd>Har qator, ustun va blok yig'indisi 45. Ichidagi to'liq kafeslarni ayirsangiz, qolgan kataklarni topasiz.</dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h3>Natijalar</h3>
+        <div class="statgrid" id="stats"></div>
+      </div>
+
+      <div class="card">
+        <h3>Sozlamalar</h3>
+        <div class="toggles">
+          <label class="toggle" for="optConf">Qoida buzilishini qizil bilan ko'rsatish<input type="checkbox" id="optConf"></label>
+          <label class="toggle" for="optAuto">Raqam qo'yilganda qoralamalarni tozalash<input type="checkbox" id="optAuto"></label>
+          <label class="toggle" for="optSame">Bir xil raqamlarni ajratib ko'rsatish<input type="checkbox" id="optSame"></label>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+<script>
+function engineFactory() {
+  const POP = new Uint8Array(512), SUM = new Uint8Array(512);
+  for (let m = 0; m < 512; m++) {
+    let p = 0, s = 0;
+    for (let d = 1; d <= 9; d++) if ((m >> (d - 1)) & 1) { p++; s += d; }
+    POP[m] = p; SUM[m] = s;
+  }
+  // ACH[avail*460 + k*46 + s] = 1 if some k-subset of avail sums to s
+  const ACH = new Uint8Array(512 * 460);
+  for (let a = 0; a < 512; a++) {
+    let sub = a;
+    while (true) {
+      ACH[a * 460 + POP[sub] * 46 + SUM[sub]] = 1;
+      if (sub === 0) break;
+      sub = (sub - 1) & a;
+    }
+  }
+  const R = [], C = [], B = [];
+  for (let i = 0; i < 81; i++) { R[i] = (i / 9) | 0; C[i] = i % 9; B[i] = ((R[i] / 3) | 0) * 3 + ((C[i] / 3) | 0); }
+  const NB = [];
+  for (let i = 0; i < 81; i++) {
+    const n = [];
+    if (R[i] > 0) n.push(i - 9);
+    if (R[i] < 8) n.push(i + 9);
+    if (C[i] > 0) n.push(i - 1);
+    if (C[i] < 8) n.push(i + 1);
+    NB[i] = n;
+  }
+  function rng(seed) {
+    let a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      let t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function shuffle(a, rnd) {
+    for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); const t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+  function fullGrid(rnd) {
+    const g = new Int8Array(81), rm = new Int16Array(9), cm = new Int16Array(9), bm = new Int16Array(9);
+    function rec(i) {
+      if (i === 81) return true;
+      const ds = shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9], rnd);
+      for (const d of ds) {
+        const b = 1 << (d - 1);
+        if ((rm[R[i]] | cm[C[i]] | bm[B[i]]) & b) continue;
+        g[i] = d; rm[R[i]] |= b; cm[C[i]] |= b; bm[B[i]] |= b;
+        if (rec(i + 1)) return true;
+        g[i] = 0; rm[R[i]] &= ~b; cm[C[i]] &= ~b; bm[B[i]] &= ~b;
+      }
+      return false;
+    }
+    rec(0);
+    return Array.from(g);
+  }
+  function makeCages(sol, minS, maxS, rnd) {
+    const cageOf = new Array(81).fill(-1);
+    const cages = [];
+    const order = shuffle([...Array(81).keys()], rnd);
+    for (const start of order) {
+      if (cageOf[start] >= 0) continue;
+      const id = cages.length;
+      const target = minS + Math.floor(rnd() * (maxS - minS + 1));
+      const cells = [start];
+      let used = 1 << (sol[start] - 1);
+      cageOf[start] = id;
+      while (cells.length < target) {
+        const fr = [];
+        for (const c of cells) for (const n of NB[c])
+          if (cageOf[n] < 0 && !(used & (1 << (sol[n] - 1))) && fr.indexOf(n) < 0) fr.push(n);
+        if (!fr.length) break;
+        const n = fr[Math.floor(rnd() * fr.length)];
+        cells.push(n); cageOf[n] = id; used |= 1 << (sol[n] - 1);
+      }
+      cages.push({ cells, mask: used });
+    }
+    for (let id = 0; id < cages.length; id++) {
+      const cg = cages[id];
+      if (!cg || cg.cells.length !== 1) continue;
+      const c = cg.cells[0], b = 1 << (sol[c] - 1);
+      const opts = shuffle(NB[c].map(n => cageOf[n]).filter(k => k !== id && cages[k] && !(cages[k].mask & b) && cages[k].cells.length <= maxS), rnd);
+      if (opts.length) {
+        const k = opts[0];
+        cages[k].cells.push(c); cages[k].mask |= b; cageOf[c] = k; cages[id] = null;
+      }
+    }
+    const out = [], map = {};
+    cages.forEach((cg, i) => {
+      if (cg) {
+        map[i] = out.length;
+        cg.cells.sort((a, b) => a - b);
+        out.push({ cells: cg.cells, sum: cg.cells.reduce((s, c) => s + sol[c], 0) });
+      }
+    });
+    return { cages: out, cageOf: cageOf.map(k => map[k]) };
+  }
+  const HOUSES = [];
+  for (let r = 0; r < 9; r++) HOUSES.push([...Array(9).keys()].map(c => r * 9 + c));
+  for (let c = 0; c < 9; c++) HOUSES.push([...Array(9).keys()].map(r => r * 9 + c));
+  for (let b = 0; b < 9; b++) { const h = []; for (let i = 0; i < 81; i++) if (B[i] === b) h.push(i); HOUSES.push(h); }
+  const COMBOS = [];
+  for (let i = 0; i < 460; i++) COMBOS.push([]);
+  for (let m = 1; m < 512; m++) COMBOS[POP[m] * 46 + SUM[m]].push(m);
+  // full cage consistency: for cage cells `e` with allowed masks `al`, digits used `used`, remaining sum `rs`
+  // returns per-cell masks of digits that appear in some valid completion (or null if none)
+  function canMatch(al, idx, n, skip, rem) {
+    let best = -1, bc = 99;
+    for (let j = 0; j < n; j++) {
+      if (j === skip || (idx >> j) & 1) continue;
+      const c = POP[al[j] & rem];
+      if (c === 0) return false;
+      if (c < bc) { bc = c; best = j; }
+    }
+    if (best < 0) return true;
+    let a = al[best] & rem;
+    const nidx = idx | (1 << best);
+    while (a) { const b = a & -a; a ^= b; if (canMatch(al, nidx, n, skip, rem ^ b)) return true; }
+    return false;
+  }
+  function cageMasks(e, al, used, rs) {
+    const n = e.length, out = new Int16Array(n);
+    if (rs > 45) return null;
+    const list = COMBOS[n * 46 + rs];
+    let any = false;
+    for (const m of list) {
+      if (m & used) continue;
+      let un = 0, okc = true;
+      for (let j = 0; j < n; j++) { const a = al[j] & m; if (!a) { okc = false; break; } un |= a; }
+      if (!okc || un !== m) continue;
+      for (let j = 0; j < n; j++) {
+        let a = al[j] & m & ~out[j];
+        while (a) {
+          const b = a & -a; a ^= b;
+          if (canMatch(al, 0, n, j, m ^ b)) { out[j] |= b; any = true; }
+        }
+      }
+    }
+    return any ? out : null;
+  }
+  function virtualCages(cages, cageOf) {
+    const v = [];
+    for (let h = 0; h < 27; h++) {
+      const H = HOUSES[h], inH = new Set(H);
+      let inside = 0; const covered = new Set();
+      const ks = new Set(H.map(c => cageOf[c]));
+      for (const k of ks) if (cages[k].cells.every(c => inH.has(c))) { inside += cages[k].sum; cages[k].cells.forEach(c => covered.add(c)); }
+      const inn = H.filter(c => !covered.has(c));
+      if (inn.length >= 1 && inn.length <= 6) v.push({ cells: inn, sum: 45 - inside });
+    }
+    return v;
+  }
+  function propagate(cages, cageOf, g) {
+    // returns Int16Array masks for empty cells, or null on contradiction
+    const rm = new Int16Array(9), cm = new Int16Array(9), bm = new Int16Array(9);
+    for (let i = 0; i < 81; i++) if (g[i]) { const b = 1 << (g[i] - 1); rm[R[i]] |= b; cm[C[i]] |= b; bm[B[i]] |= b; }
+    const mask = new Int16Array(81);
+    for (let i = 0; i < 81; i++) if (!g[i]) { mask[i] = 511 & ~(rm[R[i]] | cm[C[i]] | bm[B[i]]); if (!mask[i]) return null; }
+    // iterate cage consistency + naked singles elimination a couple of rounds
+    for (let round = 0; round < 3; round++) {
+      let changed = false;
+      for (let k = 0; k < cages.length; k++) {
+        const cells = cages[k].cells;
+        let used = 0, rs = cages[k].sum;
+        const e = [];
+        for (const c of cells) { if (g[c]) { used |= 1 << (g[c] - 1); rs -= g[c]; } else e.push(c); }
+        if (!e.length) { if (rs !== 0) return null; continue; }
+        if (rs <= 0) return null;
+        const al = e.map(c => mask[c] & ~used);
+        const res = cageMasks(e, al, used, rs);
+        if (!res) return null;
+        for (let j = 0; j < e.length; j++) if (res[j] !== mask[e[j]]) { mask[e[j]] = res[j]; changed = true; }
+      }
+      // hidden singles
+      for (let h = 0; h < 27; h++) {
+        const H = HOUSES[h];
+        let placed = 0;
+        for (let j = 0; j < 9; j++) if (g[H[j]]) placed |= 1 << (g[H[j]] - 1);
+        for (let d = 1; d <= 9; d++) {
+          const b = 1 << (d - 1);
+          if (placed & b) continue;
+          let n = 0, at = -1;
+          for (let j = 0; j < 9; j++) { const x = H[j]; if (!g[x] && (mask[x] & b)) { n++; at = x; } }
+          if (n === 0) return null;
+          if (n === 1 && mask[at] !== b) { mask[at] = b; changed = true; }
+        }
+      }
+      // naked singles: remove from peers
+      for (let h = 0; h < 27; h++) {
+        const H = HOUSES[h];
+        for (let j = 0; j < 9; j++) {
+          const x = H[j];
+          if (g[x] || POP[mask[x]] !== 1) continue;
+          for (let t = 0; t < 9; t++) { const y = H[t]; if (y !== x && !g[y] && (mask[y] & mask[x])) { mask[y] &= ~mask[x]; if (!mask[y]) return null; changed = true; } }
+        }
+      }
+      if (!changed) break;
+    }
+    return mask;
+  }
+  function solve(cages, cageOf, vals, limit, nodeLimit) {
+    const g = new Int8Array(81);
+    if (vals) for (let i = 0; i < 81; i++) g[i] = vals[i] || 0;
+    const allC = cages.concat(virtualCages(cages, cageOf));
+    let count = 0, nodes = 0, aborted = false;
+    const sols = [];
+    function rec() {
+      if (++nodes > nodeLimit) { aborted = true; return true; }
+      const mask = propagate(allC, cageOf, g);
+      if (!mask) return false;
+      let best = -1, bc = 0, bn = 10, empty = 0;
+      for (let i = 0; i < 81; i++) {
+        if (g[i]) continue;
+        empty++;
+        const n = POP[mask[i]];
+        if (n < bn) { bn = n; best = i; bc = mask[i]; }
+      }
+      if (!empty) { count++; sols.push(Array.from(g)); return count >= limit; }
+      if (bn > 1) {
+        let hb = 10, hd = 0, hcells = null;
+        for (let h = 0; h < 27; h++) {
+          const H = HOUSES[h];
+          let placed = 0;
+          for (let j = 0; j < 9; j++) if (g[H[j]]) placed |= 1 << (g[H[j]] - 1);
+          for (let d = 1; d <= 9; d++) {
+            const b = 1 << (d - 1);
+            if (placed & b) continue;
+            let n = 0;
+            for (let j = 0; j < 9; j++) { const x = H[j]; if (!g[x] && (mask[x] & b)) n++; }
+            if (n === 0) return false;
+            if (n < hb) { hb = n; hd = d; hcells = H; }
+          }
+        }
+        if (hb < bn) {
+          const b = 1 << (hd - 1);
+          for (let j = 0; j < 9; j++) {
+            const x = hcells[j];
+            if (g[x] || !(mask[x] & b)) continue;
+            g[x] = hd;
+            if (rec()) { g[x] = 0; return true; }
+            g[x] = 0;
+          }
+          return false;
+        }
+      }
+      for (let d = 1; d <= 9; d++) {
+        if (!(bc & (1 << (d - 1)))) continue;
+        g[best] = d;
+        if (rec()) { g[best] = 0; return true; }
+        g[best] = 0;
+      }
+      return false;
+    }
+    rec();
+    return { count, aborted, nodes, first: sols[0] || null, sols };
+  }
+  // candidates for every empty cell given current values (houses + cage arithmetic)
+  function candidates(cages, cageOf, vals) {
+    const rm = new Int16Array(9), cm = new Int16Array(9), bm = new Int16Array(9);
+    const nc = cages.length, cu = new Int16Array(nc), cs = new Int16Array(nc), cc = new Int8Array(nc);
+    for (let k = 0; k < nc; k++) { cs[k] = cages[k].sum; cc[k] = cages[k].cells.length; }
+    for (let i = 0; i < 81; i++) if (vals[i]) {
+      const b = 1 << (vals[i] - 1), k = cageOf[i];
+      rm[R[i]] |= b; cm[C[i]] |= b; bm[B[i]] |= b; cu[k] |= b; cs[k] -= vals[i]; cc[k]--;
+    }
+    const out = new Array(81).fill(0), houseMask = new Array(81).fill(0), cageMask = new Array(81).fill(0);
+    for (let i = 0; i < 81; i++) {
+      if (vals[i]) continue;
+      const k = cageOf[i], used = cu[k];
+      houseMask[i] = rm[R[i]] | cm[C[i]] | bm[B[i]];
+      const avail = 511 & ~used, base = (cc[k] - 1) * 46;
+      let cmask = 0;
+      for (let d = 1; d <= 9; d++) {
+        const b = 1 << (d - 1);
+        if (used & b) continue;
+        const rs = cs[k] - d;
+        if (rs < 0 || cc[k] < 1) continue;
+        if (ACH[(avail & ~b) * 460 + base + rs]) cmask |= b;
+      }
+      cageMask[i] = cmask;
+      out[i] = cmask & ~houseMask[i] & 511;
+    }
+    return { cand: out, houseMask, cageMask };
+  }
+  function growRegion(region, sol, minS, maxS, rnd, cages, cageOf) {
+    // re-cage the given cells (cageOf already -1 for them)
+    const inR = new Set(region);
+    const order = shuffle(region.slice(), rnd);
+    const made = [];
+    for (const start of order) {
+      if (cageOf[start] >= 0) continue;
+      const id = cages.length;
+      const target = minS + Math.floor(rnd() * (maxS - minS + 1));
+      const cells = [start];
+      let used = 1 << (sol[start] - 1);
+      cageOf[start] = id;
+      while (cells.length < target) {
+        const fr = [];
+        for (const c of cells) for (const n of NB[c])
+          if (inR.has(n) && cageOf[n] < 0 && !(used & (1 << (sol[n] - 1))) && fr.indexOf(n) < 0) fr.push(n);
+        if (!fr.length) break;
+        const n = fr[Math.floor(rnd() * fr.length)];
+        cells.push(n); cageOf[n] = id; used |= 1 << (sol[n] - 1);
+      }
+      cages.push({ cells, mask: used });
+      made.push(id);
+    }
+    // merge singletons into any neighbouring cage (anywhere) without repeating a digit
+    for (const id of made) {
+      const cg = cages[id];
+      if (!cg || cg.cells.length !== 1) continue;
+      const c = cg.cells[0], b = 1 << (sol[c] - 1);
+      const opts = shuffle(NB[c].map(n => cageOf[n]).filter(k => k !== id && cages[k] && !(cages[k].mask & b) && cages[k].cells.length < maxS + 1), rnd);
+      if (opts.length) { const k = opts[0]; cages[k].cells.push(c); cages[k].mask |= b; cageOf[c] = k; cages[id] = null; }
+    }
+  }
+  function finalize(cages, cageOf, sol) {
+    const out = [], map = {};
+    cages.forEach((cg, i) => {
+      if (cg) {
+        map[i] = out.length;
+        const cells = cg.cells.slice().sort((a, b) => a - b);
+        out.push({ cells, sum: cells.reduce((s, c) => s + sol[c], 0) });
+      }
+    });
+    return { cages: out, cageOf: cageOf.map(k => map[k]) };
+  }
+  const LV = {
+    hard: { min: 2, max: 4, pick: 1, singles: 1 },
+    expert: { min: 2, max: 5, pick: 1, singles: 0 },
+    devil: { min: 2, max: 6, pick: 1, singles: 0 }
+  };
+  function generate(level, seed) {
+    const rnd = rng(seed), cfg = LV[level] || LV.expert;
+    const found = [];
+    let tries = 0, solves = 0;
+    while (found.length < cfg.pick && tries < 30) {
+      tries++;
+      const sol = fullGrid(rnd);
+      const raw = [], cageOf = new Array(81).fill(-1);
+      growRegion([...Array(81).keys()], sol, cfg.min, cfg.max, rnd, raw, cageOf);
+      let ok = false, nodes = 0;
+      for (let fix = 0; fix < 40; fix++) {
+        const P = finalize(raw, cageOf, sol);
+        const r = solve(P.cages, P.cageOf, null, 2, 700);
+        solves++;
+        nodes = r.nodes;
+        if (!r.aborted && r.count === 1) {
+          const singles = P.cages.filter(c => c.cells.length === 1).length;
+          if (singles <= cfg.singles) { ok = true; found.push({ sol, cages: P.cages, cageOf: P.cageOf, nodes }); }
+          break;
+        }
+        // pick a differing cell, dissolve its cage plus one neighbouring cage, regrow
+        let x;
+        if (r.aborted || r.sols.length < 2) x = Math.floor(rnd() * 81);
+        else {
+          const [s1, s2] = r.sols;
+          const diff = [];
+          for (let i = 0; i < 81; i++) if (s1[i] !== s2[i]) diff.push(i);
+          x = diff[Math.floor(rnd() * diff.length)];
+        }
+        const k = cageOf[x];
+        const nbK = shuffle([...new Set(raw[k].cells.flatMap(c => NB[c]).map(n => cageOf[n]).filter(q => q !== k))], rnd);
+        const region = raw[k].cells.slice();
+        raw[k] = null;
+        if (nbK.length) { const q = nbK[0]; region.push(...raw[q].cells); raw[q] = null; }
+        for (const c of region) cageOf[c] = -1;
+        growRegion(region, sol, cfg.min, cfg.max, rnd, raw, cageOf);
+      }
+    }
+    if (!found.length) return null;
+    found.sort((a, b) => b.nodes - a.nodes);
+    const p = found[0];
+    return { level, sol: p.sol, cages: p.cages, cageOf: p.cageOf, nodes: p.nodes, tries, solves };
+  }
+  return { LV, POP, SUM, R, C, B, NB, HOUSES, COMBOS, rng, generate, solve, candidates };
+}
+(function () {
+  const E = engineFactory();
+  const LEVELS = [
+    { id: 'hard', name: 'Qiyin', pips: 1 },
+    { id: 'expert', name: 'Ekspert', pips: 2 },
+    { id: 'devil', name: 'Iblis', pips: 3 }
+  ];
+  const LVNAME = { hard: 'Qiyin', expert: 'Ekspert', devil: 'Iblis' };
+  const { R, C, B, POP, HOUSES, COMBOS } = E;
+  const $ = id => document.getElementById(id);
+
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { } }
+  };
+  const settings = Object.assign({ conf: true, auto: true, same: true }, store.get('ks.settings', {}));
+  const stats = Object.assign({ hard: { best: null, solved: 0 }, expert: { best: null, solved: 0 }, devil: { best: null, solved: 0 } }, store.get('ks.stats', {}));
+  const nextCache = store.get('ks.next', {}) || {};
+
+  let S = null, sel = 40, notesMode = false, history = [], paused = false, hint = null;
+  let wrongMark = new Set(), generating = false, pendingNew = null, currentLevel = 'devil';
+
+  const PEERS = [];
+  for (let i = 0; i < 81; i++) {
+    const p = new Set();
+    for (let j = 0; j < 81; j++) if (j !== i && (R[j] === R[i] || C[j] === C[i] || B[j] === B[i])) p.add(j);
+    PEERS[i] = p;
+  }
+  const HNAME = [];
+  for (let r = 0; r < 9; r++) HNAME.push(`${r + 1}-qator`);
+  for (let c = 0; c < 9; c++) HNAME.push(`${c + 1}-ustun`);
+  for (let b = 0; b < 9; b++) HNAME.push(`${b + 1}-blok`);
+  const HSETS = HOUSES.map((h, i) => ({ name: HNAME[i], cells: h, k: 1 }));
+  const HMULTI = [];
+  for (let n = 2; n <= 3; n++) for (let r = 0; r + n <= 9; r++) {
+    const cells = []; for (let q = r; q < r + n; q++) cells.push(...HOUSES[q]);
+    HMULTI.push({ name: `${r + 1}–${r + n}-qatorlar`, cells, k: n });
+    const cc = []; for (let q = r; q < r + n; q++) cc.push(...HOUSES[9 + q]);
+    HMULTI.push({ name: `${r + 1}–${r + n}-ustunlar`, cells: cc, k: n });
+  }
+
+  // ---------- worker ----------
+  const workerSrc = engineFactory.toString() +
+    '\nconst E=engineFactory();onmessage=function(e){var d=e.data,p=null,s=d.seed;for(var t=0;t<6&&!p;t++){try{p=E.generate(d.level,s);}catch(err){p=null;}s=(s*1103515245+12345)>>>0;}postMessage({id:d.id,p:p});};';
+  let worker = null;
+  try { worker = new Worker(URL.createObjectURL(new Blob([workerSrc], { type: 'text/javascript' }))); } catch (e) { worker = null; }
+  let reqId = 0;
+  const waiters = {};
+  function genSync(level) {
+    let p = null, s = (Math.random() * 4294967296) >>> 0;
+    while (!p) { p = E.generate(level, s); s = (s * 1103515245 + 12345) >>> 0; }
+    return p;
+  }
+  if (worker) {
+    worker.onmessage = e => { const w = waiters[e.data.id]; delete waiters[e.data.id]; if (w) w.res(e.data.p || genSync(w.level)); };
+    worker.onerror = () => {
+      worker = null;
+      for (const id in waiters) { const w = waiters[id]; delete waiters[id]; setTimeout(() => w.res(genSync(w.level)), 20); }
+    };
+  }
+  function genAsync(level) {
+    const seed = (Math.random() * 4294967296) >>> 0;
+    return new Promise(res => {
+      if (!worker) { setTimeout(() => res(genSync(level)), 40); return; }
+      const id = ++reqId;
+      waiters[id] = { res, level };
+      worker.postMessage({ id, level, seed });
+    });
+  }
+  const prefetching = {};
+  function prefetch(level) {
+    if (nextCache[level] || prefetching[level]) return;
+    prefetching[level] = genAsync(level).then(p => {
+      prefetching[level] = null;
+      nextCache[level] = p;
+      store.set('ks.next', nextCache);
+      return p;
+    });
+  }
+  async function takePuzzle(level) {
+    if (!nextCache[level]) {
+      if (!prefetching[level]) prefetch(level);
+      await prefetching[level];
+    }
+    const p = nextCache[level];
+    delete nextCache[level];
+    store.set('ks.next', nextCache);
+    return p;
+  }
+
+  // ---------- DOM build ----------
+  const board = $('board'), over = $('over'), veil = $('veil');
+  const cells = [];
+  for (let i = 0; i < 81; i++) {
+    const d = document.createElement('div');
+    d.className = 'cell';
+    d.setAttribute('role', 'gridcell');
+    d.tabIndex = i === sel ? 0 : -1;
+    d.innerHTML = '<span class="sum"></span><span class="val"></span><div class="notes">' + '<span></span>'.repeat(9) + '</div>';
+    d.addEventListener('pointerdown', e => { e.preventDefault(); select(i); });
+    board.appendChild(d);
+    cells.push({ el: d, sum: d.children[0], val: d.children[1], notes: Array.from(d.children[2].children) });
+  }
+  const levelsEl = $('levels');
+  LEVELS.forEach(L => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'lv'; b.dataset.lv = L.id;
+    b.innerHTML = `<span class="pips">${[1, 2, 3].map(n => `<i class="${n <= L.pips ? 'on' : ''}"></i>`).join('')}</span>${L.name}`;
+    b.addEventListener('click', () => requestNew(L.id));
+    levelsEl.appendChild(b);
+  });
+  const newBtn = document.createElement('button');
+  newBtn.type = 'button'; newBtn.className = 'btn-new'; newBtn.textContent = 'Yangi jumboq';
+  newBtn.addEventListener('click', () => requestNew(currentLevel));
+  levelsEl.appendChild(newBtn);
+
+  const pad = $('pad');
+  const padBtns = [];
+  for (let d = 1; d <= 9; d++) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'num';
+    b.setAttribute('aria-label', `${d} raqami`);
+    b.innerHTML = `<b>${d}</b><small>9</small>`;
+    b.addEventListener('click', () => input(d));
+    pad.appendChild(b);
+    padBtns.push(b);
+  }
+
+  // ---------- helpers ----------
+  const fmt = t => { const m = Math.floor(t / 60), s = t % 60; return (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s; };
+  const digitsOf = m => { const a = []; for (let d = 1; d <= 9; d++) if (m & (1 << (d - 1))) a.push(d); return a; };
+  let toastTimer = 0;
+  function toast(msg, kind) {
+    const t = $('toast');
+    t.textContent = msg; t.className = 'toast' + (kind ? ' ' + kind : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { t.textContent = ''; t.className = 'toast'; }, 3800);
+  }
+  function save() { if (S) store.set('ks.game', S); }
+
+  // ---------- overlay ----------
+  function drawOverlay() {
+    let thin = '', thick = '', cage = '';
+    for (let k = 1; k < 9; k++) {
+      const p = k * 100;
+      const l = `M${p} 0V900M0 ${p}H900`;
+      if (k % 3) thin += l; else thick += l;
+    }
+    if (S) {
+      const co = S.cageOf, d = 9;
+      const same = (i, r, c) => r >= 0 && r < 9 && c >= 0 && c < 9 && co[r * 9 + c] === co[i];
+      for (let i = 0; i < 81; i++) {
+        const r = R[i], c = C[i], x0 = c * 100, y0 = r * 100, x1 = x0 + 100, y1 = y0 + 100;
+        const U = same(i, r - 1, c), D = same(i, r + 1, c), L = same(i, r, c - 1), Rt = same(i, r, c + 1);
+        if (!U) cage += `M${L ? x0 : x0 + d} ${y0 + d}H${Rt ? x1 : x1 - d}`;
+        if (!D) cage += `M${L ? x0 : x0 + d} ${y1 - d}H${Rt ? x1 : x1 - d}`;
+        if (!L) cage += `M${x0 + d} ${U ? y0 : y0 + d}V${D ? y1 : y1 - d}`;
+        if (!Rt) cage += `M${x1 - d} ${U ? y0 : y0 + d}V${D ? y1 : y1 - d}`;
+        if (U && L && !same(i, r - 1, c - 1)) cage += `M${x0} ${y0 + d}H${x0 + d}V${y0}`;
+        if (U && Rt && !same(i, r - 1, c + 1)) cage += `M${x1} ${y0 + d}H${x1 - d}V${y0}`;
+        if (D && L && !same(i, r + 1, c - 1)) cage += `M${x0} ${y1 - d}H${x0 + d}V${y1}`;
+        if (D && Rt && !same(i, r + 1, c + 1)) cage += `M${x1} ${y1 - d}H${x1 - d}V${y1}`;
+      }
+    }
+    over.innerHTML = `<path class="thin" d="${thin}"/><path class="cagep" d="${cage}"/><path class="thick" d="${thick}"/><rect class="thick" x="2.5" y="2.5" width="895" height="895" fill="none"/>`;
+    for (let i = 0; i < 81; i++) cells[i].sum.textContent = '';
+    if (S) S.cages.forEach(cg => { cells[cg.cells[0]].sum.textContent = cg.sum; });
+  }
+
+  // ---------- rules ----------
+  function conflicts() {
+    const bad = new Set();
+    for (const H of HOUSES) {
+      const seen = {};
+      for (const x of H) { const v = S.vals[x]; if (!v) continue; (seen[v] = seen[v] || []).push(x); }
+      for (const v in seen) if (seen[v].length > 1) seen[v].forEach(x => bad.add(x));
+    }
+    S.cages.forEach(cg => {
+      const seen = {}; let sum = 0, filled = 0;
+      for (const x of cg.cells) { const v = S.vals[x]; if (!v) continue; filled++; sum += v; (seen[v] = seen[v] || []).push(x); }
+      for (const v in seen) if (seen[v].length > 1) seen[v].forEach(x => bad.add(x));
+      const empty = cg.cells.length - filled;
+      // minimum the empty cells could still add is 1+2+..+empty
+      const minRest = empty * (empty + 1) / 2;
+      if ((filled && !empty && sum !== cg.sum) || (filled && empty && sum + minRest > cg.sum)) cg.cells.forEach(x => { if (S.vals[x]) bad.add(x); });
+    });
+    return bad;
+  }
+  function houseMaskOf(i, vals) {
+    let m = 0;
+    for (const p of PEERS[i]) if (vals[p]) m |= 1 << (vals[p] - 1);
+    return m;
+  }
+  function comboFeasible(cg, m, placed) {
+    // can the digits of m not yet placed be distributed over the empty cage cells?
+    const rem = m & ~placed;
+    const e = cg.cells.filter(x => !S.vals[x]);
+    if (POP[rem] !== e.length) return false;
+    const al = e.map(x => ~houseMaskOf(x, S.vals) & rem);
+    const rec = (j, left) => {
+      if (j === e.length) return true;
+      let a = al[j] & left;
+      while (a) { const b = a & -a; a ^= b; if (rec(j + 1, left ^ b)) return true; }
+      return false;
+    };
+    return rec(0, rem);
+  }
+
+  // ---------- render ----------
+  function render() {
+    if (!S) return;
+    const conf = settings.conf ? conflicts() : new Set();
+    const selV = sel >= 0 ? S.vals[sel] : 0;
+    const selK = sel >= 0 ? S.cageOf[sel] : -1;
+    const step = hint ? hint.steps[hint.step] : null;
+    const hintSet = new Set(step ? step.cells : []);
+    for (let i = 0; i < 81; i++) {
+      const c = cells[i], v = S.vals[i];
+      const cl = c.el.classList;
+      cl.toggle('sel', i === sel);
+      cl.toggle('peer', sel >= 0 && i !== sel && PEERS[sel].has(i));
+      cl.toggle('incage', selK >= 0 && i !== sel && S.cageOf[i] === selK);
+      cl.toggle('samev', settings.same && !!selV && i !== sel && v === selV);
+      cl.toggle('hint', hintSet.has(i));
+      cl.toggle('wrong', wrongMark.has(i));
+      c.el.tabIndex = i === sel ? 0 : -1;
+      c.val.textContent = v ? v : '';
+      c.val.classList.toggle('conf', conf.has(i));
+      const n = v ? 0 : S.notes[i];
+      for (let d = 1; d <= 9; d++) {
+        const on = (n >> (d - 1)) & 1;
+        const s = c.notes[d - 1];
+        s.textContent = on ? d : '';
+        s.classList.toggle('hl', !!on && settings.same && selV === d);
+      }
+      c.el.setAttribute('aria-label', `${R[i] + 1}-qator ${C[i] + 1}-ustun${v ? ', ' + v : ', bo\'sh'}`);
+    }
+    const counts = new Array(10).fill(0);
+    S.vals.forEach(v => { if (v) counts[v]++; });
+    padBtns.forEach((b, j) => {
+      const left = 9 - counts[j + 1];
+      b.querySelector('small').textContent = left > 0 ? left : '✓';
+      b.classList.toggle('done', left <= 0);
+    });
+    pad.classList.toggle('notesmode', notesMode);
+    $('tNotes').setAttribute('aria-pressed', notesMode ? 'true' : 'false');
+    $('notesTag').textContent = notesMode ? 'YON' : "O'CH";
+    $('lvName').textContent = LVNAME[S.level];
+    $('cageCount').textContent = `${S.cages.length} ta kafes`;
+    $('timer').textContent = fmt(S.time);
+    $('hintCount').textContent = `${S.hints} ta ishlatildi`;
+    renderCage();
+    renderHint();
+  }
+  function renderCage() {
+    const box = $('combos');
+    if (sel < 0 || !S) return;
+    const k = S.cageOf[sel], cg = S.cages[k], n = cg.cells.length;
+    let placed = 0;
+    cg.cells.forEach(x => { if (S.vals[x]) placed |= 1 << (S.vals[x] - 1); });
+    const crossed = S.crossed[k] || [];
+    const list = COMBOS[n * 46 + cg.sum];
+    $('cageInfo').textContent = `Σ ${cg.sum} · ${n} katak · ${list.length} ta to'plam`;
+    const items = list.map(m => {
+      const dead = (m & placed) !== placed || !comboFeasible(cg, m, placed);
+      return { m, dead, x: !dead && crossed.includes(m) };
+    });
+    const alive = items.filter(it => !it.dead && !it.x);
+    box.innerHTML = items.map(it => `<button type="button" class="combo${it.dead ? ' dead' : it.x ? ' x' : ''}${alive.length === 1 && alive[0] === it ? ' only' : ''}" data-m="${it.m}" ${it.dead ? 'disabled' : ''}>${digitsOf(it.m).join('')}</button>`).join('');
+    $('cageHint').hidden = false;
+  }
+  $('combos').addEventListener('click', e => {
+    const b = e.target.closest('.combo');
+    if (!b || b.disabled || !S || sel < 0) return;
+    const k = S.cageOf[sel], m = +b.dataset.m;
+    const arr = S.crossed[k] || (S.crossed[k] = []);
+    const at = arr.indexOf(m);
+    if (at >= 0) arr.splice(at, 1); else arr.push(m);
+    save(); renderCage();
+  });
+
+  function renderStats() {
+    $('stats').innerHTML = LEVELS.map(L => {
+      const s = stats[L.id];
+      return `<div><small>${L.name}</small><b>${s.best != null ? fmt(s.best) : '—'}</b><span>${s.solved} ta yechildi</span></div>`;
+    }).join('');
+  }
+  function renderLevels() {
+    levelsEl.querySelectorAll('.lv').forEach(b => {
+      b.setAttribute('aria-pressed', b.dataset.lv === currentLevel ? 'true' : 'false');
+      b.disabled = generating;
+    });
+    newBtn.disabled = generating;
+  }
+
+  // ---------- veil ----------
+  function showVeil(kind, data) {
+    veil.hidden = false;
+    if (kind === 'loading') {
+      const slow = data === 'devil';
+      veil.innerHTML = `<div><div class="spinner"></div><h2>Jumboq tuzilmoqda</h2><p>${slow ? "Iblis darajasida yagona yechimli jumboq topish 5–30 soniya oladi. Keyingi jumboqlar orqa fonda oldindan tayyorlanadi, shuning uchun bu kutish faqat bir marta bo'ladi." : 'Yagona yechimga ega jumboq tekshirilmoqda.'}</p></div>`;
+    } else if (kind === 'paused') {
+      veil.innerHTML = `<div><h2>Pauza</h2><p>Vaqt to'xtatildi. Taxta yashirilgan, shuning uchun o'ylab olish uchun ham pauzadan foydalanib bo'lmaydi.</p><button type="button" class="primary" id="resumeBtn">Davom etish</button></div>`;
+      $('resumeBtn').addEventListener('click', () => setPaused(false));
+    } else if (kind === 'won') {
+      veil.innerHTML = `<div>${data.record ? '<span class="badge">Yangi rekord</span>' : ''}<h2>Yechildi</h2><p>${LVNAME[S.level]} darajadagi jumboq faqat mantiq bilan yechildi.</p>
+        <div class="stats-row"><div><small>Vaqt</small><b>${fmt(S.time)}</b></div><div><small>Maslahat</small><b>${S.hints}</b></div><div><small>Tekshiruv</small><b>${S.checks}</b></div><div><small>Rekord</small><b>${fmt(stats[S.level].best)}</b></div></div>
+        <button type="button" class="primary" id="againBtn">Keyingi jumboq</button></div>`;
+      $('againBtn').addEventListener('click', () => newGame(S.level));
+    }
+  }
+  function hideVeil() { veil.hidden = true; veil.innerHTML = ''; }
+
+  // ---------- game flow ----------
+  function requestNew(level) {
+    if (generating) return;
+    const inProgress = S && !S.done && S.vals.some(v => v) && S.time > 15;
+    if (!inProgress) { newGame(level); return; }
+    pendingNew = level;
+    $('confirmBar').hidden = false;
+  }
+  $('confirmYes').addEventListener('click', () => { $('confirmBar').hidden = true; if (pendingNew) newGame(pendingNew); pendingNew = null; });
+  $('confirmNo').addEventListener('click', () => { $('confirmBar').hidden = true; pendingNew = null; });
+
+  async function newGame(level) {
+    if (generating) return;
+    generating = true; currentLevel = level; paused = false;
+    renderLevels();
+    if (!nextCache[level]) showVeil('loading', level);
+    const p = await takePuzzle(level);
+    S = {
+      level, sol: p.sol, cages: p.cages, cageOf: p.cageOf,
+      vals: new Array(81).fill(0), notes: new Array(81).fill(0),
+      time: 0, done: false, hints: 0, checks: 0, crossed: {}
+    };
+    history = []; hint = null; wrongMark = new Set(); sel = 40; notesMode = false;
+    generating = false;
+    drawOverlay(); hideVeil(); renderLevels(); render(); save();
+    $('hintMsg').className = 'msg idle';
+    toast(`${S.cages.length} ta kafes. Omad!`);
+    prefetch(level); ['devil', 'expert', 'hard'].forEach(prefetch);
+  }
+  function setPaused(v) {
+    if (!S || S.done) return;
+    paused = v;
+    if (v) showVeil('paused'); else hideVeil();
+  }
+  $('pauseBtn').addEventListener('click', () => setPaused(!paused));
+
+  function select(i) {
+    if (!S || paused || generating) return;
+    sel = i;
+    cells[i].el.focus({ preventScroll: true });
+    render();
+  }
+  function pushHist() {
+    history.push({ vals: S.vals.slice(), notes: S.notes.slice() });
+    if (history.length > 400) history.shift();
+  }
+  function input(d) {
+    if (!S || S.done || paused || generating || sel < 0) return;
+    const b = 1 << (d - 1);
+    if (notesMode) {
+      if (S.vals[sel]) { toast("Qoralama faqat bo'sh katakka yoziladi"); return; }
+      pushHist(); S.notes[sel] ^= b;
+    } else {
+      pushHist();
+      if (S.vals[sel] === d) S.vals[sel] = 0;
+      else {
+        S.vals[sel] = d; S.notes[sel] = 0;
+        if (settings.auto) {
+          for (const p of PEERS[sel]) S.notes[p] &= ~b;
+          S.cages[S.cageOf[sel]].cells.forEach(x => { S.notes[x] &= ~b; });
+        }
+      }
+    }
+    wrongMark.delete(sel);
+    afterChange();
+  }
+  function erase() {
+    if (!S || S.done || paused || sel < 0) return;
+    if (!S.vals[sel] && !S.notes[sel]) return;
+    pushHist();
+    if (S.vals[sel]) S.vals[sel] = 0; else S.notes[sel] = 0;
+    wrongMark.delete(sel);
+    afterChange();
+  }
+  function undo() {
+    if (!S || S.done || paused || !history.length) return;
+    const h = history.pop();
+    S.vals = h.vals; S.notes = h.notes;
+    wrongMark = new Set();
+    afterChange();
+  }
+  function afterChange() {
+    if (hint && hint.target != null && S.vals[hint.target]) { hint = null; $('hintMsg').className = 'msg idle'; $('hintMsg').textContent = 'Zo\'r. Keyingi qadam uchun yana bosing.'; }
+    checkWin(); save(); render();
+  }
+  function checkWin() {
+    if (S.done) return;
+    for (let i = 0; i < 81; i++) if (S.vals[i] !== S.sol[i]) return;
+    S.done = true; hint = null;
+    const st = stats[S.level];
+    const record = st.best == null || S.time < st.best;
+    if (record) st.best = S.time;
+    st.solved++;
+    store.set('ks.stats', stats);
+    renderStats();
+    showVeil('won', { record });
+  }
+  function check() {
+    if (!S || S.done || paused) return;
+    S.checks++;
+    const wrong = [];
+    for (let i = 0; i < 81; i++) if (S.vals[i] && S.vals[i] !== S.sol[i]) wrong.push(i);
+    wrongMark = new Set(wrong);
+    const left = S.vals.filter(v => !v).length;
+    if (wrong.length) toast(`${wrong.length} ta katakda xato bor`, 'bad');
+    else toast(`Hozircha hammasi to'g'ri. ${left} ta katak qoldi.`, 'good');
+    save(); render();
+  }
+
+  // ---------- hints ----------
+  function analyseSet(set) {
+    const inSet = new Set(set.cells);
+    const ks = new Set(set.cells.map(x => S.cageOf[x]));
+    let A = 0, P = 0;
+    const innies = [], outies = [], insideKs = [];
+    for (const k of ks) {
+      const cg = S.cages[k];
+      if (cg.cells.every(x => inSet.has(x))) { A += cg.sum; insideKs.push(k); }
+      else { P += cg.sum; cg.cells.forEach(x => (inSet.has(x) ? innies : outies).push(x)); }
+    }
+    return { T: 45 * set.k, A, P, innies, outies };
+  }
+  function ruleHint(set) {
+    const a = analyseSet(set);
+    if (a.innies.length === 1 && !S.vals[a.innies[0]]) {
+      const x = a.innies[0];
+      return { key: 'in' + x + set.name, target: x, steps: [
+        { cells: set.cells, text: `<b>${set.name}</b>ni ko'rib chiqing. 45 qoidasi bilan bu hududdagi bitta katakni aniq topish mumkin.` },
+        { cells: [x], text: `${set.name} yig'indisi <b>${a.T}</b>. Butunlay ichida turgan kafeslar yig'indisi <b>${a.A}</b>. Demak, belgilangan katak = ${a.T} − ${a.A}.` }
+      ] };
+    }
+    if (a.outies.length === 1 && !S.vals[a.outies[0]]) {
+      const x = a.outies[0];
+      return { key: 'out' + x + set.name, target: x, steps: [
+        { cells: set.cells, text: `<b>${set.name}</b>ga qarang: chegarani kesib o'tgan kafeslardan faqat bitta katak tashqarida qolgan.` },
+        { cells: [x], text: `${set.name} yig'indisi <b>${a.T}</b>, butunlay ichidagi kafeslar <b>${a.A}</b>, chegarani kesgan kafeslar jami <b>${a.P}</b>. Tashqaridagi katak = ${a.P} − (${a.T} − ${a.A}).` }
+      ] };
+    }
+    return null;
+  }
+  function pairHint(set) {
+    const a = analyseSet(set);
+    if (a.innies.length === 2 && a.innies.every(x => !S.vals[x])) {
+      const s = a.T - a.A;
+      return { key: 'pair' + a.innies.join('-'), target: null, steps: [
+        { cells: set.cells, text: `<b>${set.name}</b>da 45 qoidasini qo'llang: ikki katakning yig'indisi aniq chiqadi.` },
+        { cells: a.innies, text: `Belgilangan ikki katak yig'indisi = ${a.T} − ${a.A} = <b>${s}</b>. Ular bir hududda, demak raqamlari har xil. Qaysi juftlar mos kelishini qo'shnilar bilan solishtiring.` }
+      ] };
+    }
+    return null;
+  }
+  function computeHint() {
+    const wrong = [];
+    for (let i = 0; i < 81; i++) if (S.vals[i] && S.vals[i] !== S.sol[i]) wrong.push(i);
+    if (wrong.length) {
+      return { key: 'wrong' + wrong.length, target: null, steps: [
+        { cells: [], text: `Taxtada <b>${wrong.length}</b> ta noto'g'ri raqam bor. Ular bilan davom etsangiz, mantiq boshi berk ko'chaga olib boradi.` },
+        { cells: HOUSES[R[wrong[0]]], text: `Birinchi xato <b>${R[wrong[0]] + 1}-qator</b>da. «Tekshirish» tugmasi barcha xatolarni ko'rsatadi.` }
+      ] };
+    }
+    for (const set of HSETS) { const h = ruleHint(set); if (h) return h; }
+    for (const set of HMULTI) { const h = ruleHint(set); if (h) return h; }
+    const cd = E.candidates(S.cages, S.cageOf, S.vals);
+    for (let i = 0; i < 81; i++) {
+      if (S.vals[i] || POP[cd.cand[i]] !== 1) continue;
+      const cg = S.cages[S.cageOf[i]];
+      return { key: 'ns' + i, target: i, steps: [
+        { cells: [i], text: `Shu katakka diqqat qiling. Qator, ustun, blok va kafes birgalikda faqat bitta raqamni qoldiradi.` },
+        { cells: [i], text: `Qator, ustun va blokda bor: <b>${digitsOf(cd.houseMask[i]).join(' ') || '—'}</b>. Kafes Σ${cg.sum} uchun hali mumkin: <b>${digitsOf(cd.cageMask[i]).join(' ') || '—'}</b>. Ikkalasini solishtiring.` }
+      ] };
+    }
+    for (let h = 0; h < 27; h++) {
+      const H = HOUSES[h];
+      let placed = 0;
+      H.forEach(x => { if (S.vals[x]) placed |= 1 << (S.vals[x] - 1); });
+      for (let d = 1; d <= 9; d++) {
+        const b = 1 << (d - 1);
+        if (placed & b) continue;
+        const spots = H.filter(x => !S.vals[x] && (cd.cand[x] & b));
+        if (spots.length === 1) {
+          return { key: 'hs' + h + d, target: spots[0], steps: [
+            { cells: H, text: `<b>${HNAME[h]}</b>da <b>${d}</b> raqami faqat bitta katakka sig'adi. Qaysi?` },
+            { cells: spots, text: `Mana shu katak. Qolgan joylarda ${d} qator, ustun yoki kafes yig'indisi tufayli taqiqlangan.` }
+          ] };
+        }
+      }
+    }
+    for (const set of HSETS) { const h = pairHint(set); if (h) return h; }
+    let best = -1, bn = 10;
+    for (let i = 0; i < 81; i++) if (!S.vals[i] && POP[cd.cand[i]] < bn) { bn = POP[cd.cand[i]]; best = i; }
+    if (best < 0) return null;
+    return { key: 'min' + best, target: null, steps: [
+      { cells: [best], text: `Oddiy qadam yo'q, endi chuqurroq o'ylash kerak. Eng kam variantli katak shu: <b>${digitsOf(cd.cand[best]).join(' ')}</b>. Har bir variant qo'shni kafeslarga qanday ta'sir qilishini kuzating.` }
+    ] };
+  }
+  function doHint() {
+    if (!S || S.done || paused || generating) return;
+    const h = computeHint();
+    S.hints++;
+    if (!h) { hint = null; $('hintMsg').textContent = 'Taxta to\'la.'; render(); return; }
+    if (hint && hint.key === h.key) hint.step = Math.min(hint.step + 1, h.steps.length - 1);
+    else { hint = h; hint.step = 0; }
+    save(); render();
+  }
+  function renderHint() {
+    const msg = $('hintMsg'), steps = $('hintSteps');
+    if (!hint) { steps.hidden = true; return; }
+    msg.className = 'msg';
+    msg.innerHTML = hint.steps[hint.step].text;
+    steps.hidden = hint.steps.length < 2;
+    steps.innerHTML = hint.steps.map((_, j) => `<i class="${j <= hint.step ? 'on' : ''}"></i>`).join('');
+  }
+
+  // ---------- controls ----------
+  $('tUndo').addEventListener('click', undo);
+  $('tErase').addEventListener('click', erase);
+  $('tNotes').addEventListener('click', () => { notesMode = !notesMode; render(); });
+  $('tHint').addEventListener('click', doHint);
+  $('tCheck').addEventListener('click', check);
+  [['optConf', 'conf'], ['optAuto', 'auto'], ['optSame', 'same']].forEach(([id, key]) => {
+    const el = $(id);
+    el.checked = !!settings[key];
+    el.addEventListener('change', () => { settings[key] = el.checked; store.set('ks.settings', settings); render(); });
+  });
+  document.addEventListener('keydown', e => {
+    if (!S) return;
+    const t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+    const k = e.key;
+    if ((e.ctrlKey || e.metaKey) && (k === 'z' || k === 'Z')) { e.preventDefault(); undo(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (/^[1-9]$/.test(k)) { e.preventDefault(); input(+k); return; }
+    if (k === 'Backspace' || k === 'Delete' || k === '0') { e.preventDefault(); erase(); return; }
+    if (k === 'n' || k === 'N') { notesMode = !notesMode; render(); return; }
+    if (k === 'h' || k === 'H') { doHint(); return; }
+    if (k === 'p' || k === 'P') { setPaused(!paused); return; }
+    const mv = { ArrowUp: -9, ArrowDown: 9, ArrowLeft: -1, ArrowRight: 1 }[k];
+    if (mv && !paused) {
+      e.preventDefault();
+      let r = R[sel < 0 ? 40 : sel], c = C[sel < 0 ? 40 : sel];
+      if (mv === -9) r = (r + 8) % 9; else if (mv === 9) r = (r + 1) % 9; else if (mv === -1) c = (c + 8) % 9; else c = (c + 1) % 9;
+      select(r * 9 + c);
+    }
+  });
+
+  // ---------- timer ----------
+  let tick = 0;
+  setInterval(() => {
+    if (!S || S.done || paused || generating || document.visibilityState !== 'visible') return;
+    S.time++;
+    $('timer').textContent = fmt(S.time);
+    if (++tick % 5 === 0) save();
+  }, 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && S && !S.done && !generating) { setPaused(true); save(); }
+  });
+
+  // ---------- boot ----------
+  function valid(g) {
+    return g && Array.isArray(g.sol) && g.sol.length === 81 && Array.isArray(g.cages) && Array.isArray(g.vals) && Array.isArray(g.notes);
+  }
+  function start(data) {
+    renderStats();
+    const g = (data && valid(data.S)) ? data.S : store.get('ks.game', null);
+    if (valid(g)) {
+      S = Object.assign({ crossed: {}, hints: 0, checks: 0 }, g);
+      currentLevel = S.level;
+      drawOverlay(); renderLevels(); render();
+      if (S.done) showVeil('won', { record: false });
+      else if (S.vals.some(v => v)) setPaused(true);
+      prefetch(S.level); ['devil', 'expert', 'hard'].forEach(prefetch);
+    } else {
+      drawOverlay(); renderLevels();
+      newGame('expert');
+    }
+  }
+  window.claude?.hot?.snapshot?.(() => ({ S }));
+  if (window.claude?.hot?.ready) window.claude.hot.ready(start);
+  else start(window.claude?.hot?.data ?? {});
+})();
+</script>
