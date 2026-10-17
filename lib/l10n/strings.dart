@@ -6,6 +6,8 @@ import '../engine/killer/level.dart';
 /// here so an English translation can be added later in one place.
 abstract final class S {
   static const appTitle = 'Killer Sudoku';
+  static const startupError =
+      'Ilova ishga tushmadi. Quyidagi matnni skrinshot qilib yuboring:';
 
   // Bottom navigation
   static const tabHome = 'Bosh sahifa';

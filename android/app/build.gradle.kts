@@ -54,6 +54,11 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.getByName(if (hasReleaseKey) "release" else "debug")
+            // R8 shrinking is off: with AGP 9 it can strip plugin classes
+            // that are only reached through platform channels. Size is not
+            // a concern for this sideloaded app.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
