@@ -7,7 +7,7 @@ Offline personal Killer Sudoku app. The full spec is `Sudoku ilovasi TZ.md` (Uzb
 ```
 flutter pub get
 flutter analyze          # must be warning-free
-flutter test             # must fully pass
+flutter test test        # must fully pass (tool/ holds generators, not tests)
 flutter run              # needs an Android device/emulator + Android SDK
 node -e "const E=require('./reference/killer_engine.js')(); console.log(E.generate('expert', 1))"   # JS reference output
 ```
@@ -39,4 +39,4 @@ node -e "const E=require('./reference/killer_engine.js')(); console.log(E.genera
 - [x] 5. Aqlli maslahat va Tez qoralama
 - [x] 6. Progress
 - [x] 7. Men ekrani
-- [ ] 8. Sayqal
+- [x] 8. Sayqal

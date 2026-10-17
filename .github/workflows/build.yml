@@ -35,20 +35,52 @@ jobs:
         run: flutter analyze
 
       - name: Test
-        run: flutter test
+        run: flutter test test
+
+      # Stable release key from repository secrets (see README). Without the
+      # secrets the APK is signed with a throwaway debug key.
+      - name: Release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+            echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.p12"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.p12" >> "$GITHUB_ENV"
+            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "Signing with the release key."
+          else
+            echo "::warning::KEYSTORE_BASE64 / KEYSTORE_PASSWORD secrets not set; signing with a debug key."
+          fi
 
       - name: Build release APK
         run: flutter build apk --release
+
+      # TZ §7.3: the app must not request network access.
+      - name: Check permissions
+        run: |
+          AAPT2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          APK=build/app/outputs/flutter-apk/app-release.apk
+          "$AAPT2" dump permissions "$APK" | tee permissions.txt
+          if grep -q "android.permission.INTERNET" permissions.txt; then
+            echo "::error::INTERNET permission found in the release APK"
+            exit 1
+          fi
+
+      - name: Rename APK
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //; s/+.*//')
+          cp build/app/outputs/flutter-apk/app-release.apk "killer-sudoku-$VERSION.apk"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: killer-sudoku-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: killer-sudoku-*.apk
 
       - name: Publish GitHub release (tags only)
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
-          files: build/app/outputs/flutter-apk/app-release.apk
+          files: killer-sudoku-*.apk
           generate_release_notes: true

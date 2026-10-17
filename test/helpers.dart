@@ -7,6 +7,7 @@ import 'package:killer_sudoku/data/settings.dart';
 import 'package:killer_sudoku/engine/killer/generator.dart';
 import 'package:killer_sudoku/engine/killer/level.dart';
 import 'package:killer_sudoku/engine/killer/puzzle.dart';
+import 'package:killer_sudoku/features/game/feedback.dart';
 import 'package:killer_sudoku/features/game/game_controller.dart';
 import 'package:killer_sudoku/main.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -49,6 +50,7 @@ Future<MemoryGameRepository> pumpApp(
         gameRepositoryProvider.overrideWithValue(r),
         kvStoreProvider.overrideWithValue(kv ?? MemoryKvStore()),
         sharedPreferencesProvider.overrideWithValue(sp),
+        feedbackProvider.overrideWithValue(SilentFeedback()),
         clockProvider.overrideWithValue(() => now ?? testNow),
         puzzleGeneratorProvider.overrideWithValue(
           (level, seed) async => puzzleFor(level, seed),
